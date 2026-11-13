@@ -18,6 +18,7 @@ from pathlib import Path
 from ok.core.code_runner import capture_output
 from ok.task.exceptions import TaskDisabledException
 from ok.task.task import BaseTask, TriggerTask
+from ok.util.file import get_user_data_path
 from ok.util.logger import Logger
 
 
@@ -42,7 +43,7 @@ class McpTaskRunner:
         self.executor = executor
         self.app = app
         self.screenshot_service = screenshot_service
-        self.artifact_directory = Path(artifact_directory).resolve()
+        self.artifact_directory = Path(get_user_data_path(artifact_directory)).resolve()
         self.prepare = prepare
         self.task_manager = task_manager
         self._lock = threading.RLock()
@@ -268,7 +269,7 @@ class McpTaskRunner:
                         if self.prepare is not None:
                             self.prepare()
                         task.ensure_capture()
-                        self.executor._prepare_task_for_run(is_trigger_task=False)
+                        self.executor._prepare_task_for_run(is_trigger_task=False, request_focus=True)
                         self._phase(run_id, 'resetting')
                         if task.reset_to_start() is False:
                             raise RuntimeError('reset_to_start() returned False')
@@ -283,6 +284,7 @@ class McpTaskRunner:
                         self.executor.check_enabled()
                         return None if result is None else repr(result)[:2000]
                     finally:
+                        self.executor.release_inputs()
                         if self.executor.current_task is task:
                             self.executor.current_task = None
                         if task is not None:

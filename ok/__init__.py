@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from ok.util.handler import Handler, ExitEvent
 from ok.util.logger import Logger
-from ok.util.file import get_path_relative_to_exe
+from ok.util.file import get_path_relative_to_exe, get_user_data_path
 from ok.core.ui_config import resolve_gui_icon, resolve_ui_config, resolve_window_size
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
@@ -35,10 +35,7 @@ if TYPE_CHECKING:
         BaseInteraction,
         BrowserInteraction,
         DoNothingInteraction,
-        ForegroundPostMessageInteraction,
-        GenshinInteraction,
-        PostMessageInteraction,
-        PyDirectInteraction,
+        PynputInteraction as PynputInteraction,
     )
     from ok.feature.Box import (
         Box,
@@ -116,10 +113,11 @@ _LAZY_IMPORTS = {
     'DoNothingInteraction': ('ok.device.interaction', 'DoNothingInteraction'),
     'BaseInteraction': ('ok.device.interaction', 'BaseInteraction'),
     'BrowserInteraction': ('ok.device.interaction', 'BrowserInteraction'),
-    'PostMessageInteraction': ('ok.device.interaction', 'PostMessageInteraction'),
-    'GenshinInteraction': ('ok.device.interaction', 'GenshinInteraction'),
-    'ForegroundPostMessageInteraction': ('ok.device.interaction', 'ForegroundPostMessageInteraction'),
-    'PyDirectInteraction': ('ok.device.interaction', 'PyDirectInteraction'),
+    'PynputInteraction': ('ok.device.interaction', 'PynputInteraction'),
+    'ForegroundInputInterrupted': ('ok.device.interaction_methods.foreground_input', 'ForegroundInputInterrupted'),
+    'ForegroundInputError': ('ok.device.interaction_methods.foreground_input', 'ForegroundInputError'),
+    'ForegroundTarget': ('ok.device.interaction_methods.foreground_input', 'ForegroundTarget'),
+    'get_shared_foreground_input': ('ok.device.interaction_methods.foreground_input', 'get_shared_foreground_input'),
     'ImageCaptureMethod': ('ok.device.capture', 'ImageCaptureMethod'),
     'BaseCaptureMethod': ('ok.device.capture', 'BaseCaptureMethod'),
     'BrowserCaptureMethod': ('ok.device.capture', 'BrowserCaptureMethod'),
@@ -714,14 +712,14 @@ class OK:
         if pyappify.app_profile:
             config['profile'] = pyappify.app_profile
         og.config = config
-        config["config_folder"] = config.get("config_folder") or 'configs'
+        config['config_folder'] = config.get('config_folder') or get_user_data_path('configs')
         Config.config_folder = config["config_folder"]
         config['debug'] = config.get("debug", False)
         self.debug = config['debug']
         config_logger_fn(self.config)
         from ok.core.plugin_staging import apply_pending_plugin_changes
         self.plugin_change_results = apply_pending_plugin_changes()
-        logger.info(f"ok-script init {config.get('version')}, {sys.argv}, pid={os.getpid()} config: {config}")
+        logger.info(f'框架已初始化，进程：{os.getpid()}，配置字段数：{len(config)}')
         if self.debug:
             logger.debug(f"environment contains {len(os.environ)} entries")
         # pyappify logs printf-style (log.info("%s", value)), which ok's Logger does not accept.
@@ -1203,6 +1201,11 @@ class OK:
 
     def quit(self):
         logger.info('quit app')
+        from ok.device.interaction_methods.foreground_input import stop_shared_foreground_input
+        try:
+            stop_shared_foreground_input()
+        except Exception as error:
+            logger.error(f'关闭时输入清理失败：{error}')
         if getattr(self, '_mcp_server', None) is not None:
             self._mcp_server.stop()
         self.exit_event.set()

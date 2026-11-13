@@ -8,7 +8,7 @@ from src.game_launcher import get_game_launch_arguments
 from src.task.process_feature import process_feature
 from src.task.task_icons import task_icon
 
-version = "v3.7.20"
+version = "v3.8.0"
 
 
 def _find_most_recently_run_pc_exe():
@@ -190,7 +190,6 @@ config = {
     'plugin':True,
     'my_app': ['src.globals', 'Globals'],
     'start_timeout': 120,  # default 60
-    'update_only_game_exit': True,  # if startup skipped the update check, check 10s after the game exits
     'wait_until_settle_time': 0,
     # required if using feature detection
     'template_matching': {
@@ -217,7 +216,7 @@ config = {
         'launch_arguments': get_game_launch_arguments,
         'exe': 'Client-Win64-Shipping.exe',
         'hwnd_class': 'UnrealWindow',
-        'interaction': 'PostMessage',
+        'interaction': 'Pynput',
         'capture_method': ['WGC', 'WGC_HDR','BitBlt_RenderFull'],  # Windows版本支持的话, 优先使用WGC, 否则使用BitBlt_Full
         'check_hdr': False,
         'force_no_hdr': False,
@@ -289,7 +288,6 @@ config = {
         ["src.task.AutoLoginTask", "AutoLoginTask"],
         ["src.task.SkipDialogTask", "AutoDialogTask"],
         ["src.task.FastTravelTask", "FastTravelTask"],
-        ["src.task.MouseResetTask", "MouseResetTask"],
     ], 'scene': ["src.scene.WWScene", "WWScene"],
     'update_pyappify': {
         'to_version': '1.2.3',

@@ -17,6 +17,7 @@ import psutil
 from ok import og
 from ok.core.mcp_runner import McpTaskRunner
 from ok.core.skills import get_skill as read_skill, list_skills as discover_skills
+from ok.util.file import get_user_data_path
 from ok.util.logger import Logger
 
 
@@ -51,7 +52,7 @@ def discover_mcp_servers(project_directories=None, *, artifact_directory='logs/m
         project_directories = [project_directories]
     servers = {}
     for project in project_directories:
-        directory = (Path(project) / artifact_directory).resolve()
+        directory = Path(get_user_data_path(artifact_directory, base_path=project)).resolve()
         paths = sorted((directory / 'connections').glob('*.json'))
         paths.append(directory / 'connection.json')  # Also support older servers.
         for path in paths:
@@ -276,6 +277,10 @@ class LocalMcpServer:
             if not controller.start_device(initial_refresh_done=True):
                 raise RuntimeError('Target device could not be started; inspect the application log')
         else:
+            # 首次选中设备只排队绑定，须等捕获回退结束后再诊断，不能误判为不支持。
+            manager.wait_for_binding(
+                time_out=controller.start_timeout,
+                cancel_check=lambda: executor.check_enabled(check_pause=False))
             error = controller.check_device_error()
             if error:
                 raise RuntimeError(error)

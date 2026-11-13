@@ -14,8 +14,10 @@ tests/TestSelfhostSmoke.py。
 """
 
 from importlib.util import find_spec
+import os
 
 from ok import Logger
+from ok.util.file import get_user_data_path
 
 logger = Logger.get_logger(__name__)
 
@@ -38,7 +40,29 @@ def apply(config):
     构造之后再改就不会生效了。
     """
     apply_branding(config)
+    apply_user_data_paths(config)
+    apply_input_policy(config)
     return apply_custom_tabs(config)
+
+
+def apply_user_data_paths(config):
+    """启动器保护用户原件后提供稳定根，源码开发继续使用原配置路径。"""
+    if os.environ.get('NONO_USER_DATA_ROOT'):
+        # OK 初始化会把这一目录赋给 Config，所有任务和账号共用同一存储位置。
+        config['config_folder'] = get_user_data_path('configs')
+
+
+def apply_input_policy(config):
+    """上游配置同步后继续使用前台后端，并撤出后台光标补救任务。"""
+    windows = config.get('windows')
+    if windows is not None:
+        # 与 DeviceManager 的历史配置迁移共同守住输入边界，不保留后台备选。
+        windows['interaction'] = 'Pynput'
+    if 'trigger_tasks' in config:
+        config['trigger_tasks'] = [
+            task for task in config['trigger_tasks']
+            if tuple(task) != ('src.task.MouseResetTask', 'MouseResetTask')
+        ]
 
 
 def apply_branding(config):
@@ -50,10 +74,11 @@ def apply_branding(config):
     计划任务文件夹 ``\\<gui_title>``(ok/util/windows_schedule.py:319-320)。
     """
     config["gui_title"] = APP_NAME
-    config["log_file"] = f"logs/{APP_NAME}.log"
-    config["error_log_file"] = f"logs/{APP_NAME}_error.log"
+    portable_user_data = bool(os.environ.get('NONO_USER_DATA_ROOT'))
+    config['log_file'] = get_user_data_path('logs', f'{APP_NAME}.log') if portable_user_data else f'logs/{APP_NAME}.log'
+    config['error_log_file'] = get_user_data_path('logs', f'{APP_NAME}_error.log') if portable_user_data else f'logs/{APP_NAME}_error.log'
 
-    # 必须删:ok/ui/qt/MainWindow.py:495-501 在窗口首次显示时按这个键把启动器
+    # 必须删：上游窗口首次显示时可能按这个键把启动器
     # 换成上游 v3.5.30 的 ok-ww-win32.zip。我们的 exe 已改名为 NoNo.exe,留着它
     # 会凭空多出一个 ok-ww.exe,而且版本会被降级回上游。
     config.pop("update_pyappify", None)
