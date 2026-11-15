@@ -9,6 +9,9 @@ import stat
 import zipfile
 from pathlib import Path, PurePosixPath
 
+from selfhost.user_data import FIXED_USER_ROOTS
+from selfhost.versioning import is_release_version, is_version_tag
+
 APP_NAME = "NoNo"
 ORIGIN = "https://github.com/Canda15/nono-update.git"
 MANIFEST_KEYS = {
@@ -19,9 +22,7 @@ MANIFEST_KEYS = {
 LAUNCHER_KEYS = {
     "version", "source_sha", "action_sha", "adaptation_sha256", "source_tree_sha256", "exe_sha256",
 }
-PRIVATE_WORKING_DIRS = {
-    "configs", "ok_tasks", "ok_import", "ok_templates", "screenshots", "logs",
-}
+PRIVATE_WORKING_DIRS = set(FIXED_USER_ROOTS)
 
 
 def canonical_json(value: object) -> bytes:
@@ -104,9 +105,8 @@ def validate_manifest(manifest: dict) -> None:
                         ("requirements_sha256", 64)):
         if not isinstance(manifest.get(key), str) or not re.fullmatch(f"[0-9a-f]{{{length}}}", manifest[key]):
             raise RuntimeError("便携载荷身份摘要无效。")
-    pattern = (r"v?\d+\.\d+\.\d+(?:[-.](?:alpha|beta|rc)(?:\.\d+)?)?"
-               if manifest["build_kind"] == "release_tag" else r"v?\d+\.\d+\.\d+")
-    if not isinstance(manifest["base_update_version"], str) or not re.fullmatch(pattern, manifest["base_update_version"]):
+    valid_version = is_version_tag if manifest["build_kind"] == "release_tag" else is_release_version
+    if not valid_version(manifest["base_update_version"]):
         raise RuntimeError("便携载荷缺少正式版本锚点。")
     if seal_manifest(manifest) != manifest:
         raise RuntimeError("便携载荷内容身份不匹配。")
@@ -183,7 +183,7 @@ def required_files(app_name: str, bundle_id: str) -> set[str]:
         *(f"{incoming}/{relative}" for relative in (
             "repo/HEAD", "repo/config", "working/main.py", "working/config.py",
             "working/requirements.txt", "working/pyappify.yml", "working/selfhost/NoNo.exe",
-            "working/selfhost/ok_pin.json", "python/python.exe", "python/python3.dll",
+            "working/selfhost/ok_pin.json", "working/selfhost/user_data.py", "python/python.exe", "python/python3.dll",
             "python/python312.dll", "app-seed.json", "root/pyappify.yml", "root/build-info.json",
         )),
     }

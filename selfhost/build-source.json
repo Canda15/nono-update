@@ -1,5 +1,5 @@
 {
   "schema_version": 1,
-  "release_tag": "v3.8.1",
-  "source_commit": "badacb92d849d1d82b7e1dfcc8f153dbc32e4c67"
+  "release_tag": "v3.8.3-xmod",
+  "source_commit": "597af6fa702a323a0555a480fa2203ac90415d27"
 }

@@ -17,18 +17,17 @@ from pathlib import Path, PurePosixPath
 
 from selfhost.framework_tree import IGNORED_DIR_NAMES, IGNORED_SUFFIXES, iter_payload_files, tree_digest
 from selfhost import portable_protocol as protocol
+from selfhost.versioning import is_release_version, is_version_tag
 
 LAUNCHER_URL = (
     "https://github.com/Canda15/ok-wuthering-waves/releases/download/launcher-2/NoNo-win32.zip"
 )
 PROFILE_NAME = "China"
-STABLE_VERSION_TAG = re.compile(r"v?\d+\.\d+\.\d+")
-VERSION_TAG = re.compile(r"v?\d+\.\d+\.\d+(?:[-.](?:alpha|beta|rc)(?:\.\d+)?)?")
 PRIVATE_ENVIRONMENT = {
     "GITHUB_TOKEN", "GH_TOKEN", "CNB_TOKEN", "OK_GH", "SIGNPATH_API_TOKEN",
     "GEMINI_API_KEY", "AI_API_KEY", "MIRRORCHYANUPLOADTOKEN", "ACTIONS_RUNTIME_TOKEN",
     "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "PYTHONHOME", "PYTHONPATH", "VIRTUAL_ENV",
-    "NONO_USER_DATA_ROOT", "__COMPAT_LAYER",
+    "NONO_USER_DATA_ROOT", "NONO_RUNTIME_LEASE", "__COMPAT_LAYER",
 }
 
 PROBE_IMPORTS = ("ok", "selfhost", "pyappify", "ok.device.interaction_methods.foreground_input")
@@ -145,7 +144,7 @@ def clean_caches(build_root: Path, root: Path) -> None:
 
 
 def prepare_snapshot(source: Path, destination: Path, version: str, build_root: Path) -> dict[str, str]:
-    if not STABLE_VERSION_TAG.fullmatch(version):
+    if not is_release_version(version):
         raise RuntimeError(f"更新底座没有合法版本标签：{version}")
     require_path(build_root, destination)
     native = source / "selfhost" / "NoNo.exe"
@@ -172,7 +171,8 @@ def prepare_snapshot(source: Path, destination: Path, version: str, build_root: 
     }
     framework_tracked = run(["git", "-C", str(source), "ls-files", "-z", "--", "ok",
                              ".update_repo_gitignore"], source).split("\0")
-    required_sources = {"main.py", "config.py", "requirements.txt", "pyappify.yml", "ok/__init__.py"}
+    required_sources = {"main.py", "config.py", "requirements.txt", "pyappify.yml", "ok/__init__.py",
+                        "selfhost/user_data.py", "selfhost/versioning.py"}
     required_framework = {
         relative for relative in framework_tracked if relative.startswith("ok/")
         and not IGNORED_DIR_NAMES & set(PurePosixPath(relative).parts)
@@ -290,7 +290,7 @@ def read_app_state(bundle: Path, app_name: str) -> dict:
         raise RuntimeError("启动器应用元数据的名字或安装状态不正确。")
     if state.get("current_profile") != PROFILE_NAME:
         raise RuntimeError("启动器应用元数据没有保留 China profile。")
-    if not isinstance(state.get("current_version"), str) or not VERSION_TAG.fullmatch(state["current_version"]):
+    if not is_version_tag(state.get("current_version")):
         raise RuntimeError("启动器应用元数据没有合法更新版本。")
     return state
 
@@ -543,6 +543,8 @@ def verify_package_reception(bundle: Path, manifest: dict, build_root: Path) -> 
         run([str(target / "NoNo.exe"), "--nono-receive-only"], target, timeout=1200)
         if app_json.read_bytes() != before:
             raise RuntimeError("同包重复接收覆盖了后来修改的用户偏好。")
+        # 一套安装及重复覆盖全部通过后再回收，避免两套完整运行时同时占用构建磁盘。
+        remove_tree(build_root, target.parent)
 
 
 def build_portable(source: Path, *, source_sha: str | None = None, release_tag: str | None = None,
@@ -553,7 +555,7 @@ def build_portable(source: Path, *, source_sha: str | None = None, release_tag: 
     actual_sha = git(source, "rev-parse", "HEAD")
     if source_sha is not None and source_sha != actual_sha:
         raise RuntimeError("当前检出源码 SHA 与本次编译要求不一致。")
-    if release_tag is not None and not VERSION_TAG.fullmatch(release_tag):
+    if release_tag is not None and not is_version_tag(release_tag):
         raise RuntimeError("正式便携发布必须使用合法的正式或 alpha/beta/rc 标签。")
     if release_tag is None and not (source / "selfhost/NoNo.exe").is_file():
         raise RuntimeError("缺少已编译的原生宿主，请先运行 build_runtime.ps1。")
