@@ -4,11 +4,10 @@ from pathlib import Path
 
 from ok import Box, ConfigOption, Icon
 from ok.util.GlobalConfig import create_basic_options
-from src.game_launcher import get_game_launch_arguments
 from src.task.process_feature import process_feature
 from src.task.task_icons import task_icon
 
-version = "v3.8.3-xmod"
+version = "v3.8.3-xmod.1"
 
 
 def _find_most_recently_run_pc_exe():
@@ -213,10 +212,10 @@ config = {
                            re.compile('CNativeLoginDlg'), 'Static', 'ComboBox', 'ComboLBox', 'Button'
                            ],
         'calculate_pc_exe_path': calculate_pc_exe_path,
-        'launch_arguments': get_game_launch_arguments,
+        'start_exe': False,  # 游戏由用户手动打开，所有开始入口只连接现有窗口。
         'exe': 'Client-Win64-Shipping.exe',
         'hwnd_class': 'UnrealWindow',
-        'interaction': 'nono',
+        'interaction': ['nono', 'post_message_test'],
         'capture_method': ['WGC', 'WGC_HDR','BitBlt_RenderFull'],  # Windows版本支持的话, 优先使用WGC, 否则使用BitBlt_Full
         'check_hdr': False,
         'force_no_hdr': False,
