@@ -7,7 +7,7 @@ from ok.util.GlobalConfig import create_basic_options
 from src.task.process_feature import process_feature
 from src.task.task_icons import task_icon
 
-version = "v3.8.4-xmod.2"
+version = "v3.8.4-xmod.3"
 
 
 def _find_most_recently_run_pc_exe():
