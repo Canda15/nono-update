@@ -7,7 +7,7 @@ from ok.util.GlobalConfig import create_basic_options
 from src.task.process_feature import process_feature
 from src.task.task_icons import task_icon
 
-version = "v3.8.4-xmod"
+version = "v3.8.4-xmod.1"
 
 
 def _find_most_recently_run_pc_exe():
@@ -296,6 +296,7 @@ config = {
         ["src.task.AutoLoginTask", "AutoLoginTask"],
         ["src.task.SkipDialogTask", "AutoDialogTask"],
         ["src.task.FastTravelTask", "FastTravelTask"],
+        ["src.task.MouseResetTask", "MouseResetTask"],
     ], 'scene': ["src.scene.WWScene", "WWScene"],
     'update_pyappify': {
         'to_version': '1.2.3',
